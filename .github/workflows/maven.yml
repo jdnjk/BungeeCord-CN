@@ -20,4 +20,4 @@ jobs:
         distribution: zulu
         java-version: ${{ matrix.java }}
     - run: java -version && mvn --version
-    - run: mvn --activate-profiles dist --no-transfer-progress package
+    - run: mvn install
