@@ -28,9 +28,9 @@ public class BungeeCordLauncher
 
         OptionParser parser = new OptionParser();
         parser.allowsUnrecognizedOptions();
-        parser.acceptsAll( Arrays.asList( "help" ), "Show the help" );
-        parser.acceptsAll( Arrays.asList( "v", "version" ), "Print version and exit" );
-        parser.acceptsAll( Arrays.asList( "noconsole" ), "Disable console input" );
+        parser.acceptsAll( Arrays.asList( "help" ), "获取帮助" );
+        parser.acceptsAll( Arrays.asList( "v", "version" ), "打印版本并退出" );
+        parser.acceptsAll( Arrays.asList( "noconsole" ), "禁用控制台输入" );
 
         OptionSet options = parser.parse( args );
 
@@ -53,17 +53,17 @@ public class BungeeCordLauncher
             deadline.add( Calendar.WEEK_OF_YEAR, -8 );
             if ( buildDate.before( deadline.getTime() ) )
             {
-                System.err.println( "*** Warning, this build is outdated ***" );
-                System.err.println( "*** Please download a new build from http://ci.md-5.net/job/BungeeCord ***" );
-                System.err.println( "*** You will get NO support regarding this build ***" );
-                System.err.println( "*** Server will start in 10 seconds ***" );
+                System.err.println( "*** 警告，此版本已过时 ***" );
+                System.err.println( "*** 请去 http://ci.md-5.net/job/BungeeCord 下载最新构建版本更新 ***" );
+                System.err.println( "*** 您将获得关于此构建的任何支持 ***" );
+                System.err.println( "*** 服务器将在10秒后启动 ***" );
                 Thread.sleep( TimeUnit.SECONDS.toMillis( 10 ) );
             }
         }
 
         BungeeCord bungee = new BungeeCord();
         ProxyServer.setInstance( bungee );
-        bungee.getLogger().info( "Enabled BungeeCord version " + bungee.getVersion() );
+        bungee.getLogger().info( "启用BungeeCord版本 " + bungee.getVersion() );
         bungee.start();
 
         if ( !options.has( "noconsole" ) )
@@ -73,7 +73,7 @@ public class BungeeCordLauncher
             {
                 if ( !bungee.getPluginManager().dispatchCommand( ConsoleCommandSender.getInstance(), line ) )
                 {
-                    bungee.getConsole().sendMessage( new ComponentBuilder( "Command not found" ).color( ChatColor.RED ).create() );
+                    bungee.getConsole().sendMessage( new ComponentBuilder( "未知的命令" ).color( ChatColor.RED ).create() );
                 }
             }
         }

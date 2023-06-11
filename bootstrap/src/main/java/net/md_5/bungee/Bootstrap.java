@@ -7,8 +7,8 @@ public class Bootstrap
     {
         if ( Float.parseFloat( System.getProperty( "java.class.version" ) ) < 52.0 )
         {
-            System.err.println( "*** ERROR *** BungeeCord requires Java 8 or above to function! Please download and install it!" );
-            System.out.println( "You can check your Java version with the command: java -version" );
+            System.err.println( "*** 错误 *** BungeeCord 使用Java8! 请下载!" );
+            System.out.println( "你可以用这条命令检测: java -version" );
             return;
         }
 

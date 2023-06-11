@@ -123,8 +123,8 @@ public class BungeeCord extends ProxyServer
     /**
      * locations.yml save thread.
      */
-    private final Timer saveThread = new Timer( "Reconnect Saver" );
-    private final Timer metricsThread = new Timer( "Metrics Thread" );
+    private final Timer saveThread = new Timer( "连接保护" );
+    private final Timer metricsThread = new Timer( "指定的线程" );
     /**
      * Server socket listener.
      */
@@ -239,17 +239,17 @@ public class BungeeCord extends ProxyServer
         {
             if ( EncryptionUtil.nativeFactory.load() )
             {
-                logger.info( "Using mbed TLS based native cipher." );
+                logger.info( "使用基于mbed TLS的本地密码。" );
             } else
             {
-                logger.info( "Using standard Java JCE cipher." );
+                logger.info( "使用标准Java JCE密码。" );
             }
             if ( CompressFactory.zlib.load() )
             {
-                logger.info( "Using zlib based native compressor." );
+                logger.info( "使用基于zlib的本机压缩器。" );
             } else
             {
-                logger.info( "Using standard Java compressor." );
+                logger.info( "使用标准Java压缩器。" );
             }
         }
     }
@@ -287,7 +287,7 @@ public class BungeeCord extends ProxyServer
             registerChannel( ForgeConstants.FML_HANDSHAKE_TAG );
             registerChannel( ForgeConstants.FORGE_REGISTER );
 
-            getLogger().warning( "MinecraftForge support is currently unmaintained and may have unresolved issues. Please use at your own risk." );
+            getLogger().warning( "MinecraftForge支持目前没有维护，可能有未解决的问题。请自行承担使用风险。" );
         }
 
         isRunning = true;
@@ -329,12 +329,12 @@ public class BungeeCord extends ProxyServer
         {
             if ( info.isProxyProtocol() )
             {
-                getLogger().log( Level.WARNING, "Using PROXY protocol for listener {0}, please ensure this listener is adequately firewalled.", info.getSocketAddress() );
+                getLogger().log( Level.WARNING, "使用代理{0}的代理协议，请确保此代理有足够的防火墙。", info.getSocketAddress() );
 
                 if ( connectionThrottle != null )
                 {
                     connectionThrottle = null;
-                    getLogger().log( Level.WARNING, "Since PROXY protocol is in use, internal connection throttle has been disabled." );
+                    getLogger().log( Level.WARNING, "由于使用代理协议，内部连接节流已被禁用。" );
                 }
             }
 
@@ -346,10 +346,10 @@ public class BungeeCord extends ProxyServer
                     if ( future.isSuccess() )
                     {
                         listeners.add( future.channel() );
-                        getLogger().log( Level.INFO, "Listening on {0}", info.getSocketAddress() );
+                        getLogger().log( Level.INFO, "监听地址 {0}", info.getSocketAddress() );
                     } else
                     {
-                        getLogger().log( Level.WARNING, "Could not bind to host " + info.getSocketAddress(), future.cause() );
+                        getLogger().log( Level.WARNING, "无法绑定主机 " + info.getSocketAddress(), future.cause() );
                     }
                 }
             };
@@ -364,7 +364,7 @@ public class BungeeCord extends ProxyServer
 
             if ( info.isQueryEnabled() )
             {
-                Preconditions.checkArgument( info.getSocketAddress() instanceof InetSocketAddress, "Can only create query listener on UDP address" );
+                Preconditions.checkArgument( info.getSocketAddress() instanceof InetSocketAddress, "只能在UDP地址上创建查询侦听器" );
 
                 ChannelFutureListener bindListener = new ChannelFutureListener()
                 {
@@ -374,10 +374,10 @@ public class BungeeCord extends ProxyServer
                         if ( future.isSuccess() )
                         {
                             listeners.add( future.channel() );
-                            getLogger().log( Level.INFO, "Started query on {0}", future.channel().localAddress() );
+                            getLogger().log( Level.INFO, "开始查询 {0}", future.channel().localAddress() );
                         } else
                         {
-                            getLogger().log( Level.WARNING, "Could not bind to host " + info.getSocketAddress(), future.cause() );
+                            getLogger().log( Level.WARNING, "无法绑定主机 " + info.getSocketAddress(), future.cause() );
                         }
                     }
                 };
@@ -390,13 +390,13 @@ public class BungeeCord extends ProxyServer
     {
         for ( Channel listener : listeners )
         {
-            getLogger().log( Level.INFO, "Closing listener {0}", listener );
+            getLogger().log( Level.INFO, "关闭监听器 {0}", listener );
             try
             {
                 listener.close().syncUninterruptibly();
             } catch ( ChannelException ex )
             {
-                getLogger().severe( "Could not close listen thread" );
+                getLogger().severe( "无法关闭监听线程" );
             }
         }
         listeners.clear();
@@ -440,12 +440,12 @@ public class BungeeCord extends ProxyServer
         isRunning = false;
 
         stopListeners();
-        getLogger().info( "Closing pending connections" );
+        getLogger().info( "关闭所有连接" );
 
         connectionLock.readLock().lock();
         try
         {
-            getLogger().log( Level.INFO, "Disconnecting {0} connections", connections.size() );
+            getLogger().log( Level.INFO, "断开{0}连接", connections.size() );
             for ( UserConnection user : connections.values() )
             {
                 user.disconnect( reason );
@@ -464,14 +464,14 @@ public class BungeeCord extends ProxyServer
 
         if ( reconnectHandler != null )
         {
-            getLogger().info( "Saving reconnect locations" );
+            getLogger().info( "保存重新连接位置" );
             reconnectHandler.save();
             reconnectHandler.close();
         }
         saveThread.cancel();
         metricsThread.cancel();
 
-        getLogger().info( "Disabling plugins" );
+        getLogger().info( "关闭插件" );
         for ( Plugin plugin : Lists.reverse( new ArrayList<>( pluginManager.getPlugins() ) ) )
         {
             try
@@ -483,13 +483,13 @@ public class BungeeCord extends ProxyServer
                 }
             } catch ( Throwable t )
             {
-                getLogger().log( Level.SEVERE, "Exception disabling plugin " + plugin.getDescription().getName(), t );
+                getLogger().log( Level.SEVERE, "异常禁用插件 " + plugin.getDescription().getName(), t );
             }
             getScheduler().cancel( plugin );
             plugin.getExecutorService().shutdownNow();
         }
 
-        getLogger().info( "Closing IO threads" );
+        getLogger().info( "关闭IO线程" );
         eventLoops.shutdownGracefully();
         try
         {
@@ -498,7 +498,7 @@ public class BungeeCord extends ProxyServer
         {
         }
 
-        getLogger().info( "Thank you and goodbye" );
+        getLogger().info( "感谢你的使用,再见" );
         // Need to close loggers after last message!
         for ( Handler handler : getLogger().getHandlers() )
         {
@@ -544,7 +544,7 @@ public class BungeeCord extends ProxyServer
     @Override
     public String getVersion()
     {
-        return ( BungeeCord.class.getPackage().getImplementationVersion() == null ) ? "unknown" : BungeeCord.class.getPackage().getImplementationVersion();
+        return ( BungeeCord.class.getPackage().getImplementationVersion() == null ) ? "未知" : BungeeCord.class.getPackage().getImplementationVersion();
     }
 
     public final void reloadMessages()
@@ -559,7 +559,7 @@ public class BungeeCord extends ProxyServer
                 cacheResourceBundle( cachedFormats, new PropertyResourceBundle( rd ) );
             } catch ( IOException ex )
             {
-                getLogger().log( Level.SEVERE, "Could not load custom messages.properties", ex );
+                getLogger().log( Level.SEVERE, "无法加载语言文件 messages.properties", ex );
             }
         }
 
@@ -758,7 +758,7 @@ public class BungeeCord extends ProxyServer
         UUID offlineId = con.getPendingConnection().getOfflineId();
         if ( offlineId != null && offlineId.version() != 3 )
         {
-            throw new IllegalArgumentException( "Offline UUID must be a name-based UUID" );
+            throw new IllegalArgumentException( "离线UUID必须是基于名称的UUID" );
         }
         connectionLock.writeLock().lock();
         try
