@@ -1,6 +1,6 @@
 package net.md_5.bungee.protocol;
 
-import com.google.common.base.Charsets;
+import com.google.common.base.Function;
 import com.google.common.base.Preconditions;
 import com.google.gson.JsonElement;
 import io.netty.buffer.ByteBuf;
@@ -9,14 +9,17 @@ import io.netty.buffer.ByteBufOutputStream;
 import java.io.DataInputStream;
 import java.io.DataOutputStream;
 import java.io.IOException;
+import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.BitSet;
 import java.util.EnumSet;
 import java.util.List;
 import java.util.UUID;
+import java.util.function.BiConsumer;
 import lombok.RequiredArgsConstructor;
 import net.md_5.bungee.api.chat.BaseComponent;
+import net.md_5.bungee.api.chat.ComponentStyle;
 import net.md_5.bungee.chat.ComponentSerializer;
 import se.llbit.nbt.ErrorTag;
 import se.llbit.nbt.NamedTag;
@@ -26,6 +29,23 @@ import se.llbit.nbt.Tag;
 @RequiredArgsConstructor
 public abstract class DefinedPacket
 {
+
+    public <T> T readNullable(Function<ByteBuf, T> reader, ByteBuf buf)
+    {
+        return buf.readBoolean() ? reader.apply( buf ) : null;
+    }
+
+    public <T> void writeNullable(T t0, BiConsumer<T, ByteBuf> writer, ByteBuf buf)
+    {
+        if ( t0 != null )
+        {
+            buf.writeBoolean( true );
+            writer.accept( t0, buf );
+        } else
+        {
+            buf.writeBoolean( false );
+        }
+    }
 
     public static void writeString(String s, ByteBuf buf)
     {
@@ -39,7 +59,7 @@ public abstract class DefinedPacket
             throw new OverflowPacketException( "Cannot send string longer than " + maxLength + " (got " + s.length() + " characters)" );
         }
 
-        byte[] b = s.getBytes( Charsets.UTF_8 );
+        byte[] b = s.getBytes( StandardCharsets.UTF_8 );
         if ( b.length > maxLength * 3 )
         {
             throw new OverflowPacketException( "Cannot send string longer than " + ( maxLength * 3 ) + " (got " + b.length + " bytes)" );
@@ -62,7 +82,7 @@ public abstract class DefinedPacket
             throw new OverflowPacketException( "Cannot receive string longer than " + maxLen * 3 + " (got " + len + " bytes)" );
         }
 
-        String s = buf.toString( buf.readerIndex(), len, Charsets.UTF_8 );
+        String s = buf.toString( buf.readerIndex(), len, StandardCharsets.UTF_8 );
         buf.readerIndex( buf.readerIndex() + len );
 
         if ( s.length() > maxLen )
@@ -73,7 +93,17 @@ public abstract class DefinedPacket
         return s;
     }
 
+    public static Either<String, BaseComponent> readEitherBaseComponent(ByteBuf buf, int protocolVersion, boolean string)
+    {
+        return ( string ) ? Either.left( readString( buf ) ) : Either.right( readBaseComponent( buf, protocolVersion ) );
+    }
+
     public static BaseComponent readBaseComponent(ByteBuf buf, int protocolVersion)
+    {
+        return readBaseComponent( buf, Short.MAX_VALUE, protocolVersion );
+    }
+
+    public static BaseComponent readBaseComponent(ByteBuf buf, int maxStringLength, int protocolVersion)
     {
         if ( protocolVersion >= ProtocolConstants.MINECRAFT_1_20_3 )
         {
@@ -83,9 +113,28 @@ public abstract class DefinedPacket
             return ComponentSerializer.deserialize( json );
         } else
         {
-            String string = readString( buf );
+            String string = readString( buf, maxStringLength );
 
             return ComponentSerializer.deserialize( string );
+        }
+    }
+
+    public static ComponentStyle readComponentStyle(ByteBuf buf, int protocolVersion)
+    {
+        SpecificTag nbt = (SpecificTag) readTag( buf, protocolVersion );
+        JsonElement json = TagUtil.toJson( nbt );
+
+        return ComponentSerializer.deserializeStyle( json );
+    }
+
+    public static void writeEitherBaseComponent(Either<String, BaseComponent> message, ByteBuf buf, int protocolVersion)
+    {
+        if ( message.isLeft() )
+        {
+            writeString( message.getLeft(), buf );
+        } else
+        {
+            writeBaseComponent( message.getRight(), buf, protocolVersion );
         }
     }
 
@@ -103,6 +152,14 @@ public abstract class DefinedPacket
 
             writeString( string, buf );
         }
+    }
+
+    public static void writeComponentStyle(ComponentStyle style, ByteBuf buf, int protocolVersion)
+    {
+        JsonElement json = ComponentSerializer.toJson( style );
+        SpecificTag nbt = TagUtil.fromJson( json );
+
+        writeTag( nbt, buf, protocolVersion );
     }
 
     public static void writeArray(byte[] b, ByteBuf buf)
@@ -191,7 +248,7 @@ public abstract class DefinedPacket
 
             if ( bytes > maxBytes )
             {
-                throw new RuntimeException( "VarInt too big" );
+                throw new OverflowPacketException( "VarInt too big (max " + maxBytes + ")" );
             }
 
             if ( ( in & 0x80 ) != 0x80 )
@@ -328,6 +385,38 @@ public abstract class DefinedPacket
         }
 
         return null;
+    }
+
+    public static void writeNumberFormat(NumberFormat format, ByteBuf buf, int protocolVersion)
+    {
+        writeVarInt( format.getType().ordinal(), buf );
+        switch ( format.getType() )
+        {
+            case BLANK:
+                break;
+            case STYLED:
+                writeComponentStyle( (ComponentStyle) format.getValue(), buf, protocolVersion );
+                break;
+            case FIXED:
+                writeBaseComponent( (BaseComponent) format.getValue(), buf, protocolVersion );
+                break;
+        }
+    }
+
+    public static NumberFormat readNumberFormat(ByteBuf buf, int protocolVersion)
+    {
+        int format = readVarInt( buf );
+        switch ( format )
+        {
+            case 0:
+                return new NumberFormat( NumberFormat.Type.BLANK, null );
+            case 1:
+                return new NumberFormat( NumberFormat.Type.STYLED, readComponentStyle( buf, protocolVersion ) );
+            case 2:
+                return new NumberFormat( NumberFormat.Type.FIXED, readBaseComponent( buf, protocolVersion ) );
+            default:
+                throw new IllegalArgumentException( "Unknown number format " + format );
+        }
     }
 
     public static Tag readTag(ByteBuf input, int protocolVersion)

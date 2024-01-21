@@ -67,6 +67,7 @@ import net.md_5.bungee.protocol.packet.Respawn;
 import net.md_5.bungee.protocol.packet.ScoreboardDisplay;
 import net.md_5.bungee.protocol.packet.ScoreboardObjective;
 import net.md_5.bungee.protocol.packet.ScoreboardScore;
+import net.md_5.bungee.protocol.packet.ScoreboardScoreReset;
 import net.md_5.bungee.protocol.packet.ServerData;
 import net.md_5.bungee.protocol.packet.SetCompression;
 import net.md_5.bungee.protocol.packet.TabCompleteResponse;
@@ -183,7 +184,7 @@ public class DownstreamBridge extends PacketHandler
         switch ( objective.getAction() )
         {
             case 0:
-                serverScoreboard.addObjective( new Objective( objective.getName(), ComponentSerializer.toString( objective.getValue() ), objective.getType().toString() ) );
+                serverScoreboard.addObjective( new Objective( objective.getName(), ( objective.getValue().isLeft() ) ? objective.getValue().getLeft() : ComponentSerializer.toString( objective.getValue().getRight() ), objective.getType().toString() ) );
                 break;
             case 1:
                 serverScoreboard.removeObjective( objective.getName() );
@@ -192,7 +193,7 @@ public class DownstreamBridge extends PacketHandler
                 Objective oldObjective = serverScoreboard.getObjective( objective.getName() );
                 if ( oldObjective != null )
                 {
-                    oldObjective.setValue( ComponentSerializer.toString( objective.getValue() ) );
+                    oldObjective.setValue( ( objective.getValue().isLeft() ) ? objective.getValue().getLeft() : ComponentSerializer.toString( objective.getValue().getRight() ) );
                     oldObjective.setType( objective.getType().toString() );
                 }
                 break;
@@ -217,6 +218,18 @@ public class DownstreamBridge extends PacketHandler
                 break;
             default:
                 throw new IllegalArgumentException( "Unknown scoreboard action: " + score.getAction() );
+        }
+    }
+
+    @Override
+    public void handle(ScoreboardScoreReset scoreboardScoreReset) throws Exception
+    {
+        Scoreboard serverScoreboard = con.getServerSentScoreboard();
+
+        // TODO: Expand score API to handle objective values. Shouldn't matter currently as only used for removing score entries.
+        if ( scoreboardScoreReset.getScoreName() == null )
+        {
+            serverScoreboard.removeScore( scoreboardScoreReset.getItemName() );
         }
     }
 
